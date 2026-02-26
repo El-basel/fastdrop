@@ -1,10 +1,13 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlmodel import SQLModel, Field
-from pydantic import EmailStr
+from pydantic import EmailStr, computed_field
+
 
 def get_datetime_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc) 
+
+
 
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, max_length=255)
@@ -26,3 +29,29 @@ class User(UserBase, table=True):
 
 class UserPublic(UserBase):
     id: uuid.UUID
+
+class FileBase(SQLModel):
+    name: str = Field(max_length=128)
+    size: int = Field(ge=0)
+    mime_type: str
+    
+
+class File(FileBase, table=True):
+    id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
+    extension: str = Field(default="") 
+    uploaded_by: uuid.UUID | None = Field(foreign_key="user.id")
+    expires_at: datetime
+    uploaded_at: datetime | None = Field(default_factory=get_datetime_utc)
+    download_count: int | None = Field(default=0)
+    delete_token: str | None = None
+    is_active: bool = True
+
+class FilePublic(FileBase):
+    id: uuid.UUID
+    download_count: int
+    expires_at: datetime
+
+    @computed_field
+    @property
+    def download_url(self) -> str:
+        return f"/files/{self.id}"
