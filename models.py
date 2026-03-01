@@ -1,11 +1,7 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from .utils import *
 from sqlmodel import SQLModel, Field
 from pydantic import EmailStr, computed_field
-
-
-def get_datetime_utc() -> datetime:
-    return datetime.now(timezone.utc) 
 
 
 
@@ -32,14 +28,14 @@ class UserPublic(UserBase):
 
 class FileBase(SQLModel):
     name: str = Field(max_length=128)
-    size: int = Field(ge=0)
-    mime_type: str
+    size: int = Field(default=0, ge=0)
+    mime_type: str | None
     
 
 class File(FileBase, table=True):
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
     extension: str = Field(default="") 
-    uploaded_by: uuid.UUID | None = Field(foreign_key="user.id")
+    uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
     expires_at: datetime
     uploaded_at: datetime | None = Field(default_factory=get_datetime_utc)
     download_count: int | None = Field(default=0)
