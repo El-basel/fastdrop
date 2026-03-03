@@ -37,10 +37,15 @@ class File(FileBase, table=True):
     extension: str = Field(default="") 
     uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
     expires_at: datetime
-    uploaded_at: datetime | None = Field(default_factory=get_datetime_utc)
+    uploaded_at: datetime = Field(default_factory=get_datetime_utc)
     download_count: int | None = Field(default=0)
     delete_token: str | None = None
     is_active: bool = True
+
+    @computed_field
+    @property
+    def stored_path(self) -> str:
+        return f"/{str(self.uploaded_at.year)}_{str(self.uploaded_at.month)}/{self.id}.{self.extension}"
 
 class FilePublic(FileBase):
     id: uuid.UUID
