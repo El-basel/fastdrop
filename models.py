@@ -33,19 +33,19 @@ class FileBase(SQLModel):
     
 
 class File(FileBase, table=True):
-    id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     extension: str = Field(default="") 
     uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
     expires_at: datetime
     uploaded_at: datetime = Field(default_factory=get_datetime_utc)
-    download_count: int | None = Field(default=0)
+    download_count: int  = Field(default=0)
     delete_token: str | None = None
-    is_active: bool = True
+    is_active: bool = Field(default=True)
 
     @computed_field
     @property
     def stored_path(self) -> str:
-        return f"/{str(self.uploaded_at.year)}_{str(self.uploaded_at.month)}/{self.id}.{self.extension}"
+        return f"./{self.uploaded_at.year}_{self.uploaded_at.month:02d}/{self.id}{self.extension}"
 
 class FilePublic(FileBase):
     id: uuid.UUID

@@ -1,13 +1,16 @@
 import shutil
 import os
+import uuid
 from pathlib import Path
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, create_engine, Session, select
 
-from fastapi import FastAPI, UploadFile, Depends
+from fastapi import FastAPI, UploadFile, Depends, HTTPException, Response, status
+from fastapi.responses import FileResponse
 
 from .utils import *
 from .models import *
@@ -16,7 +19,7 @@ UPLOAD_BASE_DIR = Path("uploads")
 UPLOAD_BASE_DIR.mkdir(exist_ok=True)
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def create_db_and_tables():
     # SQLModel.metadata.drop_all(engine)
@@ -75,3 +78,25 @@ async def uplode_file(in_file: UploadFile, session: SessionDep):
         if file_path.exists():
             os.remove(file_path)
         raise
+
+@app.get("/file/{file_id}")
+async def download_file(file_id: uuid.UUID, session: SessionDep):
+    file = session.exec(select(File).where(File.id == file_id)).one_or_none()
+    if file is None :
+        raise HTTPException(status_code=404, detail="File no found")
+    
+    expiration_date_aware = file.expires_at.replace(tzinfo=ZoneInfo("UTC"))
+    if expiration_date_aware < get_datetime_utc() or not file.is_active :
+        if expiration_date_aware < get_datetime_utc() or file.is_active:
+            file.is_active = False
+            session.add(file)
+            session.commit()
+        raise HTTPException(status_code=410, detail="Link Expired")
+    file.download_count += 1
+    session.add(file)
+    session.commit()
+    return FileResponse(
+    UPLOAD_BASE_DIR.absolute()/file.stored_path,
+    media_type=file.mime_type,
+    filename=f"{file.name}{file.extension}")
+    
