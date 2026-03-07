@@ -1,7 +1,7 @@
 import uuid
 from .utils import *
 from sqlmodel import SQLModel, Field
-from pydantic import EmailStr, computed_field
+from pydantic import EmailStr, computed_field, BaseModel
 
 
 
@@ -39,7 +39,6 @@ class File(FileBase, table=True):
     expires_at: datetime
     uploaded_at: datetime = Field(default_factory=get_datetime_utc)
     download_count: int  = Field(default=0)
-    delete_token: str | None = None
     is_active: bool = Field(default=True)
 
     @computed_field
@@ -51,8 +50,12 @@ class FilePublic(FileBase):
     id: uuid.UUID
     download_count: int
     expires_at: datetime
-
+    deletion_token: str | None = None
     @computed_field
     @property
     def download_url(self) -> str:
         return f"/files/{self.id}"
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

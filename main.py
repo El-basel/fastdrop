@@ -6,11 +6,15 @@ from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from typing import Annotated
 from zoneinfo import ZoneInfo
+from datetime import datetime
 
 from sqlmodel import SQLModel, create_engine, Session, select
 
 from fastapi import FastAPI, UploadFile, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
+import jwt
+from jwt import InvalidTokenError
 
 from .utils import *
 from .models import *
@@ -20,6 +24,8 @@ UPLOAD_BASE_DIR.mkdir(exist_ok=True)
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 engine = create_engine(DATABASE_URL, echo=False)
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 def create_db_and_tables():
     # SQLModel.metadata.drop_all(engine)
@@ -37,6 +43,13 @@ app = FastAPI(lifespan=lifespan)
 def get_session():
     with Session(engine) as session:
         yield session
+
+def create_delete_token(data: dict, expire_delta: timedelta= timedelta(days=30)):
+    to_encode = data.copy()
+    expire = datetime.now(ZoneInfo("UTC")) + expire_delta
+    to_encode.update({"exp": expire})
+    deletion_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return deletion_token
 
 SessionDep = Annotated[Session, Depends(get_session)]
 @app.get("/")
@@ -71,6 +84,9 @@ async def uplode_file(in_file: UploadFile, session: SessionDep):
         
         session.commit()
         session.refresh(file)
+        encoded_file_id = jsonable_encoder(file.id)
+        deletion_token = create_delete_token({"file_id": encoded_file_id, "action": "delete"})
+        file = FilePublic(**file.model_dump(), deletion_token=deletion_token)
         return file
     except Exception as e:
         print("Exception: ", e)
