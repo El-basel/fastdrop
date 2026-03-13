@@ -34,12 +34,13 @@ class FileBase(SQLModel):
 
 class File(FileBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    extension: str = Field(default="") 
+    extension: str = ""
     uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
     expires_at: datetime
     uploaded_at: datetime = Field(default_factory=get_datetime_utc)
-    download_count: int  = Field(default=0)
-    is_active: bool = Field(default=True)
+    download_count: int  = 0
+    is_active: bool = True
+    is_deleted: bool = False
 
     @computed_field
     @property
@@ -59,3 +60,8 @@ class FilePublic(FileBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class DeletionToken(BaseModel):
+    file_id: uuid.UUID
+    action: str
+    exp: datetime

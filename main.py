@@ -4,17 +4,18 @@ import uuid
 from pathlib import Path
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
 from sqlmodel import SQLModel, create_engine, Session, select
 
-from fastapi import FastAPI, UploadFile, Depends, HTTPException, Response, status
+from fastapi import FastAPI, UploadFile, Depends, HTTPException, Response, status, Body
 from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 import jwt
 from jwt import InvalidTokenError
+from pydantic import ValidationError
 
 from .utils import *
 from .models import *
@@ -116,3 +117,24 @@ async def download_file(file_id: uuid.UUID, session: SessionDep):
     media_type=file.mime_type,
     filename=f"{file.name}{file.extension}")
     
+@app.delete("/file/{file_id}")
+async def delete_file(file_id: uuid.UUID, deletion_token: Annotated[str, Body()], session: SessionDep):
+    file = session.exec(select(File).where(File.id == file_id)).one_or_none()
+    if file is None :
+        raise HTTPException(status_code=404, detail="File no found")
+    
+    try:
+        deletion_token_decode: DeletionToken = DeletionToken(**jwt.decode(deletion_token, SECRET_KEY, [ALGORITHM]))
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=410, detail="Deletion Token Expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid Token")
+    except ValidationError:  # From Pydantic if payload doesn't match DeletionToken
+        raise HTTPException(status_code=400, detail="Malformed token")
+    if deletion_token_decode.file_id != file_id:
+        raise HTTPException(status_code=400, detail="Invalid Token")
+    file.is_active = False
+    file.is_deleted = True
+    session.add(file)
+    session.commit()
+    return {"message": "File deleted successfully"}
