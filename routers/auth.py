@@ -3,7 +3,7 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 from datetime import timedelta
 
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import select
@@ -12,6 +12,7 @@ from pydantic import EmailStr
 from ..dependencies import SessionDep
 from ..models import User, Token, UserPublic, UserCreate
 from ..utils import hash_password, verify_password, create_access_token
+from ..config import IN_PRODUCTION
 
 DUMMY_HASH = hash_password("DUMMY_HASH")
 router = APIRouter(
@@ -47,8 +48,11 @@ async def user_register(user_data: UserCreate, session: SessionDep):
     session.refresh(user)
     return user
 
+# either set the access token in HttpOnly cookie
+# (this will make it easier in the frontend to send the token instead of developer handling it, the browser will take care)
+# or Autherization header (this will make it easier for Swagger UI and API testing tools to just set the header)
 @router.post('/login')
-async def user_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
+async def user_login(response: Response, form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
     user: User | None = autheticate_user(form_data.username, form_data.password, session)
     if not user:
         raise HTTPException(
@@ -57,4 +61,12 @@ async def user_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": jsonable_encoder(user.id)})
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=IN_PRODUCTION,
+        samesite="lax",
+        max_age=14*24*60*60
+    )
     return Token(access_token=access_token, token_type="bearer")

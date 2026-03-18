@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from ..utils import get_datetime_utc, get_datetime_utc_delta, create_delete_token, decode_token
 from ..models import File, FilePublic, DeletionToken
-from ..dependencies import SessionDep, AuthDep
+from ..dependencies import SessionDep, GetUserDep
 from ..config import UPLOAD_BASE_DIR
 
 router = APIRouter(
@@ -23,7 +23,7 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=FilePublic)
-async def uplode_file(in_file: UploadFile, session: SessionDep, token: AuthDep):
+async def uplode_file(in_file: UploadFile, session: SessionDep, user: GetUserDep):
     if in_file.filename is not None:
         filename, extention = os.path.splitext(in_file.filename)
     else:
@@ -61,7 +61,7 @@ async def uplode_file(in_file: UploadFile, session: SessionDep, token: AuthDep):
         raise
 
 @router.get("/{file_id}")
-async def download_file(file_id: uuid.UUID, session: SessionDep, token: AuthDep):
+async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep):
     file = session.exec(select(File).where(File.id == file_id)).one_or_none()
     if file is None :
         raise HTTPException(status_code=404, detail="File no found")
@@ -82,7 +82,7 @@ async def download_file(file_id: uuid.UUID, session: SessionDep, token: AuthDep)
     filename=f"{file.name}{file.extension}")
     
 @router.delete("/{file_id}")
-async def delete_file(file_id: uuid.UUID, deletion_token: Annotated[str, Body()], session: SessionDep, toke: AuthDep):
+async def delete_file(file_id: uuid.UUID, deletion_token: Annotated[str, Body()], session: SessionDep, user: GetUserDep):
     file = session.exec(select(File).where(File.id == file_id)).one_or_none()
     if file is None :
         raise HTTPException(status_code=404, detail="File no found")
