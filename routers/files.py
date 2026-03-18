@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlmodel import select
 
-from fastapi import APIRouter, UploadFile, HTTPException, Body
+from fastapi import APIRouter, UploadFile, HTTPException, Body, Form
 from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 import jwt
@@ -23,7 +23,9 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=FilePublic)
-async def uplode_file(in_file: UploadFile, session: SessionDep, user: GetUserDep):
+async def uplode_file(in_file: UploadFile, expire: Annotated[int, Form(default=1)], session: SessionDep, user: GetUserDep):
+    if not user:
+        expire = 30
     if in_file.filename is not None:
         filename, extention = os.path.splitext(in_file.filename)
     else:
@@ -34,7 +36,9 @@ async def uplode_file(in_file: UploadFile, session: SessionDep, user: GetUserDep
         name=filename, 
         extension=extention, 
         mime_type=in_file.content_type or "type/unknown",  
-        expires_at=get_datetime_utc_delta(30))
+        expires_at=get_datetime_utc_delta(expire if expire > 0 else 1),
+        user=user
+        )
     
     session.add(file)
     session.flush()
@@ -62,10 +66,18 @@ async def uplode_file(in_file: UploadFile, session: SessionDep, user: GetUserDep
 
 @router.get("/{file_id}")
 async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep):
-    file = session.exec(select(File).where(File.id == file_id)).one_or_none()
+    file = session.get(File, file_id)
     if file is None :
         raise HTTPException(status_code=404, detail="File no found")
     
+    # As we don't delete the file from the DB (just make is_deleted=True)
+    # There is a possibility for the developer to delete it from the upload directory
+    # but didn't mark it as deleted in DB which will execute the operation normally
+    # This would raise exception as the file doesn't exist in the uploads directory (which happened in testing)
+    # Note that normally this should never happen as normal users can't remove files form upload/
+    stored_path = UPLOAD_BASE_DIR.absolute()/file.stored_path
+    if not stored_path.exists():
+        raise HTTPException(status_code=404, detail="File no found")
     expiration_date_aware = file.expires_at.replace(tzinfo=ZoneInfo("UTC"))
     if expiration_date_aware < get_datetime_utc() or not file.is_active :
         if expiration_date_aware < get_datetime_utc() or file.is_active:
@@ -77,13 +89,13 @@ async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDe
     session.add(file)
     session.commit()
     return FileResponse(
-    UPLOAD_BASE_DIR.absolute()/file.stored_path,
+    stored_path,
     media_type=file.mime_type,
     filename=f"{file.name}{file.extension}")
     
 @router.delete("/{file_id}")
 async def delete_file(file_id: uuid.UUID, deletion_token: Annotated[str, Body()], session: SessionDep, user: GetUserDep):
-    file = session.exec(select(File).where(File.id == file_id)).one_or_none()
+    file = session.get(File, file_id)
     if file is None :
         raise HTTPException(status_code=404, detail="File no found")
     

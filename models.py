@@ -1,6 +1,6 @@
 import uuid
 from .utils import *
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from pydantic import EmailStr, computed_field, BaseModel
 
 
@@ -22,7 +22,8 @@ class User(UserBase, table=True):
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
-
+    files: list[File] = Relationship(back_populates="user")
+    
 class UserPublic(UserBase):
     id: uuid.UUID
 
@@ -35,12 +36,14 @@ class FileBase(SQLModel):
 class File(FileBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     extension: str = ""
-    uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
     expires_at: datetime
     uploaded_at: datetime = Field(default_factory=get_datetime_utc)
     download_count: int  = 0
     is_active: bool = True
     is_deleted: bool = False
+
+    uploaded_by: uuid.UUID | None = Field(nullable=True, default=None, foreign_key="user.id")
+    user: User | None = Relationship(back_populates="files")
 
     @computed_field
     @property
