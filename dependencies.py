@@ -17,4 +17,6 @@ def create_db_and_tables():
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/login')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/login', auto_error=False)
+
+AuthDep = Annotated[str, Depends(oauth2_scheme)]
