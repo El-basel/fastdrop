@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlmodel import select
 
-from fastapi import APIRouter, UploadFile, HTTPException, Body, Form
+from fastapi import APIRouter, UploadFile, HTTPException, Body, Form, status
 from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 import jwt
@@ -23,7 +23,7 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=FilePublic)
-async def uplode_file(in_file: UploadFile, expire: Annotated[int, Form(default=1)], session: SessionDep, user: GetUserDep):
+async def uplode_file(in_file: UploadFile, expire: Annotated[int, Form()], session: SessionDep, user: GetUserDep):
     if not user:
         expire = 30
     if in_file.filename is not None:
@@ -94,21 +94,25 @@ async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDe
     filename=f"{file.name}{file.extension}")
     
 @router.delete("/{file_id}")
-async def delete_file(file_id: uuid.UUID, deletion_token: Annotated[str, Body()], session: SessionDep, user: GetUserDep):
+async def delete_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep, deletion_token: Annotated[str, Body()] = "token"):
     file = session.get(File, file_id)
     if file is None :
-        raise HTTPException(status_code=404, detail="File no found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File no found")
     
-    try:
-        deletion_token_decode: DeletionToken = DeletionToken(**decode_token(deletion_token))
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=410, detail="Deletion Token Expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=400, detail="Invalid Token")
-    except ValidationError:  # From Pydantic if payload doesn't match DeletionToken
-        raise HTTPException(status_code=400, detail="Malformed token")
-    if deletion_token_decode.file_id != file_id:
-        raise HTTPException(status_code=400, detail="Invalid Token")
+    if not user:
+        try:
+            deletion_token_decode: DeletionToken = DeletionToken(**decode_token(deletion_token))
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="Deletion Token Expired")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Token")
+        except ValidationError:  # From Pydantic if payload doesn't match DeletionToken
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed token")
+        if deletion_token_decode.file_id != file_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Token")
+    else:
+        if file.uploaded_by != user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid File Ownership")
     file.is_active = False
     file.is_deleted = True
     session.add(file)

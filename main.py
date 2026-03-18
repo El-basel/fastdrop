@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from .dependencies import create_db_and_tables
 
-from .routers import files, auth
+from .routers import files, auth, users
 
 
 @asynccontextmanager
@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(files.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 
 @app.get("/")
 async def hello_world():
