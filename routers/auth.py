@@ -6,7 +6,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.encoders import jsonable_encoder
-from sqlmodel import select
+from sqlmodel import select, Session
 from pydantic import EmailStr
 
 from ..dependencies import SessionDep
@@ -49,11 +49,12 @@ async def user_register(user_data: UserCreate, session: SessionDep):
     return user
 
 # either set the access token in HttpOnly cookie
-# (this will make it easier in the frontend to send the token instead of developer handling it, the browser will take care)
-# or Autherization header (this will make it easier for Swagger UI and API testing tools to just set the header)
-@router.post('/login')
-async def user_login(response: Response, form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
-    user: User | None = autheticate_user(form_data.username, form_data.password, session)
+# (this will make it easier in the frontend to send the token 
+# instead of developer handling it, the browser will take care)
+# or Autherization header (this will make it easier for Swagger UI 
+# and API testing tools to just set the header)
+async def authenticate_and_set_cookie(response: Response, username: str, password: str, session: Session) -> str:
+    user: User | None = autheticate_user(username, password, session)
     if not user:
         raise HTTPException(
             status_code=401,
@@ -69,4 +70,13 @@ async def user_login(response: Response, form_data: Annotated[OAuth2PasswordRequ
         samesite="lax",
         max_age=14*24*60*60
     )
+    return access_token
+# Extracted the authentication logic from the endpoint
+# to call it from Jinja Templates instead of calling the endpoint
+# this is required as we need to supply the session parameter
+# and for the api endpoint FastAPI will handle it with dependency injection
+
+@router.post('/login')
+async def api_login(response: Response, form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
+    access_token = await authenticate_and_set_cookie(response, form_data.username, form_data.password, session)
     return Token(access_token=access_token, token_type="bearer")

@@ -11,7 +11,9 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
 
-class UserCreate(UserBase):
+class UserCreate(SQLModel):
+    email: EmailStr = Field(unique=True, max_length=255)
+    full_name: str = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
 
 class UserLogin(SQLModel):
