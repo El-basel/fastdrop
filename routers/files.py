@@ -4,8 +4,7 @@ import uuid
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from sqlmodel import select
-
+from sqlmodel import Session
 from fastapi import APIRouter, UploadFile, HTTPException, Body, Form, status
 from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
@@ -13,7 +12,7 @@ import jwt
 from pydantic import ValidationError
 
 from ..utils import get_datetime_utc, get_datetime_utc_delta, create_delete_token, decode_token
-from ..models import File, FilePublic, DeletionToken
+from ..models import File, FilePublic, DeletionToken, User
 from ..dependencies import SessionDep, GetUserDep
 from ..config import UPLOAD_BASE_DIR
 
@@ -22,8 +21,7 @@ router = APIRouter(
     tags=["file"]
 )
 
-@router.post("/", response_model=FilePublic)
-async def uplode_file(in_file: UploadFile, expire: Annotated[int, Form()], session: SessionDep, user: GetUserDep):
+async def upload_file(in_file: UploadFile, expire: int, session: Session, user: User | None):
     if not user:
         expire = 30
     if in_file.filename is not None:
@@ -64,8 +62,7 @@ async def uplode_file(in_file: UploadFile, expire: Annotated[int, Form()], sessi
             os.remove(file_path)
         raise
 
-@router.get("/{file_id}")
-async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep):
+async def download_file(file_id: uuid.UUID, session: Session, user: User | None):
     file = session.get(File, file_id)
     if file is None :
         raise HTTPException(status_code=404, detail="File no found")
@@ -88,13 +85,10 @@ async def download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDe
     file.download_count += 1
     session.add(file)
     session.commit()
-    return FileResponse(
-    stored_path,
-    media_type=file.mime_type,
-    filename=f"{file.name}{file.extension}")
-    
-@router.delete("/{file_id}")
-async def delete_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep, deletion_token: Annotated[str, Body()] = "token"):
+    filename = f"{file.name}{file.extension}"
+    return stored_path, file.mime_type, filename
+
+async def delete_file(file_id: uuid.UUID, session: Session, user: User | None, deletion_token: str):
     file = session.get(File, file_id)
     if file is None :
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File no found")
@@ -117,4 +111,20 @@ async def delete_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep,
     file.is_deleted = True
     session.add(file)
     session.commit()
+
+@router.post("/", response_model=FilePublic)
+async def api_uplode_file(in_file: UploadFile, expire: Annotated[int, Form()], session: SessionDep, user: GetUserDep):
+    return await upload_file(in_file, expire, session, user)
+
+@router.get("/{file_id}")
+async def api_download_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep):
+    stored_path, mime_type, filename = await download_file(file_id, session, user)
+    return FileResponse(
+    stored_path,
+    media_type=mime_type,
+    filename=filename)
+    
+@router.delete("/{file_id}")
+async def api_delete_file(file_id: uuid.UUID, session: SessionDep, user: GetUserDep, deletion_token: Annotated[str, Body()] = "token"):
+    await delete_file(file_id, session, user, deletion_token)
     return {"message": "File deleted successfully"}

@@ -31,10 +31,9 @@ def autheticate_user(email: EmailStr, password: str, session) -> User | None:
         return None
     return user
 
-
-@router.post('/register', response_model=UserPublic)
-async def user_register(user_data: UserCreate, session: SessionDep):
-    user: User | None = session.exec(select(User).where(User.email == user_data.email)).first()
+async def register_user(user_data: UserCreate, session: Session):
+    user: User | None =session.exec(select(User).where(User.email == user_data.email)).first()
+    print("user email is unique")
     if user:
         raise HTTPException(status_code=409, detail="User with this email already exists")
     password = hash_password(user_data.password)
@@ -71,10 +70,11 @@ async def authenticate_and_set_cookie(response: Response, username: str, passwor
         max_age=14*24*60*60
     )
     return access_token
-# Extracted the authentication logic from the endpoint
-# to call it from Jinja Templates instead of calling the endpoint
-# this is required as we need to supply the session parameter
-# and for the api endpoint FastAPI will handle it with dependency injection
+
+@router.post('/register', response_model=UserPublic)
+async def api_register(user_data: UserCreate, session: SessionDep):
+    user = await register_user(user_data, session)
+    return user
 
 @router.post('/login')
 async def api_login(response: Response, form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):

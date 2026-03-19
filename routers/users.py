@@ -1,8 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from ..models import UserPublic, FilePublic
+from ..models import User, FilePublic
 from ..dependencies import GetUserDep
 
 router = APIRouter(
@@ -10,11 +10,9 @@ router = APIRouter(
     tags=["user"]
 )
 
-
-@router.get("/me")
-async def dashboard(user: GetUserDep):
+async def dashboard(user: User | None):
     if not user:
-        return {"error": "error"}
+        return HTTPException(status_code=403, detail="Please login first")
     files = user.files
     response: dict[str, Any] = {"name": user.full_name}
     response.update({"files": []})
@@ -25,3 +23,6 @@ async def dashboard(user: GetUserDep):
                 uploaded_files.append(FilePublic(**file.model_dump()))
         response["files"] = uploaded_files
     return response
+@router.get("/me")
+async def api_dashboard(user: GetUserDep):
+    return await dashboard(user)
