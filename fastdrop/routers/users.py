@@ -2,8 +2,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from ..models import User, FilePublic
-from ..dependencies import GetUserDep
+from fastdrop.models import User, FilePublic
+from fastdrop.dependencies import GetUserDep
 
 router = APIRouter(
     prefix="/user",

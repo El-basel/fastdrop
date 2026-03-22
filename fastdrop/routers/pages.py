@@ -7,8 +7,8 @@ from fastapi.templating import Jinja2Templates
 from fastdrop.config import TEMPLATES_DIR
 from fastdrop.dependencies import SessionDep, GetUserDep
 from fastdrop.models import UserCreate, UserLogin
-from auth import authenticate_and_set_cookie, register_user
-from users import dashboard
+from fastdrop.routers.auth import authenticate_and_set_cookie, register_user
+from fastdrop.routers.users import dashboard
 
 
 router = APIRouter()

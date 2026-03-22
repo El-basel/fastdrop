@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-import files, auth, users
+from fastdrop.routers import files, auth, users
 
 router = APIRouter()
 

@@ -8,8 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import SQLModel, create_engine, Session
 import jwt
 
-from utils import decode_token
-from models import User
+from fastdrop.utils import decode_token
+from fastdrop.models import User
 engine = create_engine(DATABASE_URL, echo=False)
 def get_session():
     with Session(engine) as session:
