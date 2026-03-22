@@ -1,4 +1,4 @@
-from .config import SECRET_KEY, ALGORITHM
+from fastdrop.config import SECRET_KEY, ALGORITHM
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Any

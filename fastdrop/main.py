@@ -2,10 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
-from .dependencies import create_db_and_tables
+from fastdrop.dependencies import create_db_and_tables
 
-from .routers import api, pages
-from .config import SECRET_KEY
+from fastdrop.routers import api, pages
+from fastdrop.config import SECRET_KEY
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

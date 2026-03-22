@@ -11,10 +11,10 @@ from fastapi.encoders import jsonable_encoder
 import jwt
 from pydantic import ValidationError
 
-from ..utils import get_datetime_utc, get_datetime_utc_delta, create_delete_token, decode_token
-from ..models import File, FilePublic, DeletionToken, User
-from ..dependencies import SessionDep, GetUserDep
-from ..config import UPLOAD_BASE_DIR
+from fastdrop.utils import get_datetime_utc, get_datetime_utc_delta, create_delete_token, decode_token
+from fastdrop.models import File, FilePublic, DeletionToken, User
+from fastdrop.dependencies import SessionDep, GetUserDep
+from fastdrop.config import UPLOAD_BASE_DIR
 
 router = APIRouter(
     prefix="/file",

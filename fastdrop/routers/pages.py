@@ -4,11 +4,11 @@ from fastapi import APIRouter, Request, Form, Response, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from ..config import TEMPLATES_DIR
-from ..dependencies import SessionDep, GetUserDep
-from ..models import UserCreate, UserLogin
-from .auth import authenticate_and_set_cookie, register_user
-from .users import dashboard
+from fastdrop.config import TEMPLATES_DIR
+from fastdrop.dependencies import SessionDep, GetUserDep
+from fastdrop.models import UserCreate, UserLogin
+from auth import authenticate_and_set_cookie, register_user
+from users import dashboard
 
 
 router = APIRouter()

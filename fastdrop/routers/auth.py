@@ -9,10 +9,10 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import select, Session
 from pydantic import EmailStr
 
-from ..dependencies import SessionDep
-from ..models import User, Token, UserPublic, UserCreate
-from ..utils import hash_password, verify_password, create_access_token
-from ..config import IN_PRODUCTION
+from fastdrop.dependencies import SessionDep
+from fastdrop.models import User, Token, UserPublic, UserCreate
+from fastdrop.utils import hash_password, verify_password, create_access_token
+from fastdrop.config import IN_PRODUCTION
 
 DUMMY_HASH = hash_password("DUMMY_HASH")
 router = APIRouter(

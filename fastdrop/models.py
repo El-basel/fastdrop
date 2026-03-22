@@ -1,5 +1,5 @@
 import uuid
-from .utils import *
+from fastdrop.utils import *
 from sqlmodel import SQLModel, Field, Relationship
 from pydantic import EmailStr, computed_field, BaseModel
 
