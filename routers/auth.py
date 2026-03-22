@@ -52,8 +52,8 @@ async def register_user(user_data: UserCreate, session: Session):
 # instead of developer handling it, the browser will take care)
 # or Autherization header (this will make it easier for Swagger UI 
 # and API testing tools to just set the header)
-async def authenticate_and_set_cookie(response: Response, username: str, password: str, session: Session) -> str:
-    user: User | None = autheticate_user(username, password, session)
+async def authenticate_and_set_cookie(response: Response, email: EmailStr, password: str, session: Session) -> str:
+    user: User | None = autheticate_user(email, password, session)
     if not user:
         raise HTTPException(
             status_code=401,

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% if error %}
+<p>Error</p>
+<p>{{ msg }}</p>
+{% endif %}
+
+{% for file in user_data.files %}
+<p>{{file}}</p>
+{% endfor %}
+{% endblock %}

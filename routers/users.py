@@ -12,7 +12,7 @@ router = APIRouter(
 
 async def dashboard(user: User | None):
     if not user:
-        return HTTPException(status_code=403, detail="Please login first")
+        raise HTTPException(status_code=403, detail="Please login first")
     files = user.files
     response: dict[str, Any] = {"name": user.full_name}
     response.update({"files": []})
