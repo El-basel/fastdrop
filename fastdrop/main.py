@@ -18,6 +18,3 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.include_router(api.router, prefix="/api")
 app.include_router(pages.router)
 
-@app.get("/")
-async def hello_world():
-    return {"response": "Hello world"}

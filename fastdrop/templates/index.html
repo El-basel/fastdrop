@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+<h1>FastDrop</h1>
+
+<p>
+    upload, share, and download files.
+</p>
+
+<ul>
+    <li>Upload any type of file</li>
+    <li>Generate shareable links</li>
+    <li>Download files using shared links</li>
+    <li>Create an account for more control</li>
+    <li>Set expiration limits on shared links (for logged-in users)</li>
+</ul>
+
+<hr>
+
+<h2>Account</h2>
+<p>
+    <a href="{{ url_for('web_login_get') }}">Login</a> |
+    <a href="{{ url_for('web_register_get') }}">Sign Up</a>
+</p>
+
+<hr>
+
+<h2>Upload a File</h2>
+<form action="{{ url_for('web_file_post') }}" method="POST" enctype="multipart/form-data">
+    <label for="uploaded_file">Choose file:</label><br><br>
+    <input type="file" name="uploaded_file" id="file" required><br><br>
+
+    <!-- Optional expiration (only used if logged in, backend can handle) -->
+    {% if user %}
+    <label for="expiration">Link expiration:</label><br><br>
+    <input type="number" name="expiration" id="expiration" min="1"><br><br>
+    {% endif %}
+    <button type="submit">Upload</button>
+    {% if file %}
+    <p>{{file}}</p>
+    {% endif %}
+</form>
+{% endblock %}
